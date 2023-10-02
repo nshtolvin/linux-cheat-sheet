@@ -252,6 +252,11 @@ sudo mkdir -p /mnt/hgfs
 sudo mount -t fuse.vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other
 ```
 
+On Windows open the directory in Explorer:
+```
+\\vmware-host\Shared Folders\<shared_folder_name>
+```
+
 ### Auto-mounting shared folder:
 Add the following line to `/etc/fstab`:
 ```
