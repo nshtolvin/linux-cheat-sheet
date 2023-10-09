@@ -5,6 +5,7 @@
   - [Users](#users)
   - [Groups](#groups)
   - [NTP](#ntp)
+  - [Networks](#networks)
   - [Archives](#archives)
   - [Proxy](#proxy)
 - [Statistics](#statistics)
@@ -25,6 +26,7 @@
   - [Minikube installation](#minikube-installation)
   - [kubectl installation](#kubectl-installation)
 - [PowerShell AD Commands](#powerShell-ad-commands)
+  - [Networks](#networks)
 
 
 ## Links
@@ -41,7 +43,7 @@
 ### Users
 `useradd -m <username> -G <group> -s /bin/bash -p <password> -d /home/<dir> -g <group>` - create user
 
-User info without passwords is stored in `/etc/passwd`. User info without passwords is stored in `/etc/passwd`.
+User info without passwords is stored in `/etc/passwd`. User passwords is stored in `/etc/shadow`.
 
 `passwd <username>` - change password
 
@@ -55,6 +57,9 @@ User info without passwords is stored in `/etc/passwd`. User info without passwo
 
 ### NTP
 - [Simple tutorial](https://www.server-world.info/en/note?os=Ubuntu_20.04&p=ntp&f=3)
+
+### Networks
+To configure network parameters you can use `ifconfig`, `ip` or `nmtui` (`apt install network-manager`)
 
 ### Archives
 Create _.tar.gz_ archive:
@@ -393,3 +398,12 @@ Get-ADGroup {-Identity <gr_name> | -Filter {Name -like "*<search>*"}} -Propertie
 Get-ADGroupMember -Identity <gr_name> | Measure-Object | select count
 (Get-ADGroup GR_devstorage_editors -Properties *).Members.Count
 ```
+
+`gpupdate /force` - update group policies for a user and/or computer
+
+
+### Networks
+`nbtstat` - displays NetBIOS protocol statistics, NetBIOS name tables for local and remote computers, and the NetBIOS name cache
+
+`ipconfig {/release | /release6}` - reset network ipv4/ipv6 parameters received via DHCP
+`ipconfig {/renew | /renew6}` /renew - update the ipv4/ipv6 address for the specified adapter
