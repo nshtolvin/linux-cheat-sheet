@@ -27,6 +27,7 @@
   - [kubectl installation](#kubectl-installation)
 - [PowerShell AD Commands](#powerShell-ad-commands)
   - [Networks](#networks)
+- [LDAP authentication](#ldap-authentication)
 
 
 ## Links
@@ -407,3 +408,67 @@ Get-ADGroupMember -Identity <gr_name> | Measure-Object | select count
 
 `ipconfig {/release | /release6}` - reset network ipv4/ipv6 parameters received via DHCP
 `ipconfig {/renew | /renew6}` /renew - update the ipv4/ipv6 address for the specified adapter
+
+
+## LDAP authentication
+An example of setting up user authentication using ldap for the _wiki.js_ service. You must first configure a domain controller with the Active Directory Domain Services role.<br>
+It is also necessary to allow self-registration of users and designate a group that will be assigned to them by default (preferably a group with the least number of privileges); then the user group can be changed. Otherwise, you will have to manually add users and only after that they will be able to log in to the system.
+
+LDAP URL
+```
+ldap://<server_host_or_server_ip>:389
+or
+ldaps://<server_host_or_server_ip>:636
+```
+​
+Admin Bind DN - The distinguished name (dn) of the account used for binding.
+```
+CN=<srv_account>,OU=...,...,DC=<local>,DC=<com>
+```
+​
+Admin Bind Credentials - The password of the account used above for binding.
+​
+Search Base - The base DN from which to search for users.
+```
+DC=<local>,DC=<com>
+```
+​
+Search Filter - The query to use to match username. {{username}} must be present and will be interpolated with the user provided username when performing the LDAP search.
+```
+(sAMAccountName={{username}})
+or
+(|(sAMAccountName={{username}})(userPrincipalName={{username}}))
+or
+(&(sAMAccountName={{username}})(memberOf=CN=<>,OU=...,..,DC=<local>,DC=<com>))
+```
+​
+Configure TLS if necessary<br>
+TLS Certificate Path - Absolute path to the TLS certificate on the server.
+
+Unique ID Field Mapping - The field storing the user unique identifier. Usually "uid" or "sAMAccountName".
+```
+sAMAccountName
+```
+​
+Email Field Mapping - The field storing the user email. Usually "mail".
+```
+userPrincipalName
+```
+​
+Display Name Field Mapping - The field storing the user display name. Usually "displayName" or "cn".
+```
+displayName
+```
+​
+Avatar Picture Field Mapping
+```
+jpegPhoto
+```
+
+Map Groups if necessary<br>
+Map groups matching names from the users LDAP/Active Directory groups. Group Search Base must also be defined for this to work. Note this will remove any groups the user has that doesn't match an LDAP/Active Directory group.<br>
+Group Search Base - The base DN from which to search for groups.<br>
+​Group Search Filter - LDAP search filter for groups. (member={{dn}}) will use the distinguished name of the user and will work in most cases.<br>
+​Group Search Scope - How far from the Group Search Base to search for groups. sub (default) will search the entire subtree. base, will only search the Group Search Base dn. one, will search the Group Search Base dn and one additional level.<br>
+​Group DN Property - The property of user object to use in {{dn}} interpolation of Group Search Filter.
+​Group Name Field - The field that contains the name of the LDAP group to match on, usually "name" or "cn".
