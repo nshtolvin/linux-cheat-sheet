@@ -38,6 +38,16 @@
 - [Linux Command Line](https://cheatography.com/davechild/cheat-sheets/linux-command-line/)
 - [Linux Commands](https://www.pcwdld.com/linux-commands-cheat-sheet)
 
+---
+
+- [bregman-arie/devops-exercises](https://github.com/bregman-arie/devops-exercises)
+- [wagoodman/dive](https://github.com/wagoodman/dive)
+- [awesome-selfhosted/awesome-selfhosted](https://github.com/awesome-selfhosted/awesome-selfhosted)
+- [HariSekhon/DevOps-Bash-tools](https://github.com/HariSekhon/DevOps-Bash-tools)
+- [HariSekhon/Kubernetes-configs](https://github.com/HariSekhon/Kubernetes-configs)
+- [jlord/git-it-electron](https://github.com/jlord/git-it-electron)
+- [sadservers.com](https://sadservers.com/)
+
 
 ## Basics
 
