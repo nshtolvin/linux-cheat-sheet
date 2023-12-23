@@ -46,6 +46,7 @@
 - [HariSekhon/DevOps-Bash-tools](https://github.com/HariSekhon/DevOps-Bash-tools)
 - [HariSekhon/Kubernetes-configs](https://github.com/HariSekhon/Kubernetes-configs)
 - [jlord/git-it-electron](https://github.com/jlord/git-it-electron)
+- [Lifailon/PS-Commands](https://github.com/Lifailon/PS-Commands)
 - [sadservers.com](https://sadservers.com/)
 
 
