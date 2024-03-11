@@ -13,6 +13,7 @@
   - [Add rule](#add-rule)
   - [Save changes](#save-changes)
 - [Certificates](#certificates)
+- [Troubleshooting](#troubleshooting)
 - [VMWare tools](#vmware-tools)
   - [Install VMWare tools](#install-vmware-tools)
   - [Enable shared folder](#enable-shared-folder)
@@ -256,6 +257,75 @@ openssl rsa -in <keyfile-encrypted.key> -outform PEM -out <keyfile-encrypted-pem
 ```
 
 
+## Troubleshooting
+```bash
+# checking free disk space
+df -h
+# checking directory size
+du -sh <path_to_dir>
+# inodes check
+df -i
+# checking disk status through smart reports
+smartctl -a /dev/<disk>
+# checking the software raid array
+cat /proc/mdstat
+# load on the disk subsystem
+iostat
+# processes working with the disk subsystem
+iotop
+
+
+# cpu - top / htop
+# us - user processes, sy - system processes and system kernel, ni - operations with changed priority, id - idle, wa - i/o waiting (disk, user, network), hi - hardware interrupts, si - software interrupts, st - downtime due to the inability to allocate resources by the hypervisor
+
+# RAM info
+vmstat
+# or
+free -m
+# or
+cat /proc/meminfo
+
+# show processes
+ps aux
+# kill process
+kill <PID>
+# debugging processes in real time
+strace [ls] -p <PID>
+
+
+# output of processes that listen on some ports
+netstat -tunlp
+# or
+ss -lntu
+
+# routing (~ ip route)
+netstat -rn
+
+# real-time tracing (~ traceroute)
+mtr <dst_ip>
+
+# dns lookup (~ nslookup)
+dig @<dns_server_ip> <FQDN>
+# request dns server record
+dig -t [type] <FQDN>
+
+# checking an open port on a remote server via the telnet protocol, but without using the telnet utility
+curl -v telnet://<dst_ip>:<dst_port>
+# requests to unix socket
+curl --unix-socket <path_to_socket> <URL>
+
+
+# user logins and privilege escalation
+/var/log/auth.log
+# messages from the system kernel
+/var/log/kern.log
+dmesg -T
+
+# show srvice logs
+journalctl -xeu <service_name>
+```
+
+
 ## VMWare tools
 ### Install VMWare tools
 ```
@@ -309,7 +379,6 @@ echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.d
 
 sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
 ```
 
 __If the installation fails, use [Install from a package](https://docs.docker.com/engine/install/ubuntu/#install-from-a-package)__
