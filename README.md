@@ -12,6 +12,11 @@
 - [iptables](#iptables)
   - [Add rule](#add-rule)
   - [Save changes](#save-changes)
+- [File Systems](#file-systems)
+  - [Classical approach](#classical-approach)
+  - [Logical partitions](#logical-partitions)
+  - [RAID storage](#raid-storage)
+  - [LVM](#lvm)
 - [Certificates](#certificates)
 - [Troubleshooting](#troubleshooting)
 - [VMWare tools](#vmware-tools)
@@ -191,7 +196,7 @@ Read tutorials:
 - [How to make iptables persistent after reboot on Linux](https://linuxconfig.org/how-to-make-iptables-rules-persistent-after-reboot-on-linux)
 
 ### Add rule
-```
+```bash
 iptables -t <table> <command> <chain> [num] <condition> <action>
 ```
 where
@@ -200,7 +205,7 @@ where
 - \<action> - ACCEPT/REJECT/DROP
 
 Example - enable ssh on specific port:
-```
+```bash
 iptables -t filter -A INPUT 10 -s 10.10.10.0/255.255.255.0 -j DROP
 iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 iptables -P INPUT DROP
@@ -208,7 +213,7 @@ iptables -P INPUT DROP
 
 ### Save changes
 If you want to save your custom iptables rules you need `iptables-persistent` and `iptables-save`:
-```
+```bash
 sudo apt install iptables-persistent
 ```
 
@@ -223,9 +228,166 @@ $ sudo ip6tables-save > /etc/iptables/rules.v6
 ```
 
 
+## File systems
+
+### Classical approach
+The classic approach involves working with __storage media__, __logical partitions__ and __file systems__.
+```bash
+# show info only about mounted file systems, including those that are not disk partitions
+df -h
+# show info about disks and partitions created on them, their sizes, mount point
+lsblk
+
+# crate file system on disk or logical partition
+mkfs.<file_system_name> /dev/<disk>
+# example
+mkfs.ext4 /dev/sdb
+
+# mount file system to folder каталог
+mount /dev/<disk> </mount/point/path/to/folder>
+# example
+mount /dev/sdb /mmt/testfolder
+
+# mount mount everything listed in /etc/fstab file
+mount -a
+
+# unmount file system
+umount </mount/point/path/to/folder>
+
+# show UUID of file systems
+blkid
+
+# resize existing file system
+resize2fs /dev/<disk>
+```
+
+To automatically mount the file system when the OS boots, add the line to the `/etc/fstab`:
+```
+UUID=<UUID> /mount/point/path/to/folder/ ext4  defaults   0 0
+```
+
+### Logical partitions
+Work with:
+```bash
+fdisk /dev/<disk>
+
+# then in the fsdisk utility
+n # create new partition
+p # create new primary partition
+# partition number and value first sector can be left as default
++<size>{K,M,G,T,P} # partition size in kilobytes, megabytes...
+p # show created partitions
+w # write changes to disk
+d # delete partition
+```
+Next, you need to create a file system via `mkfs.<file_system_name> /dev/<disk>`, mount the directory and add it to `/etc/fstab` if necessary.
+
+It is not possible to increase the size of the current partition just like that, since it is logical: it starts and ends on certain sectors of the physical medium, and it is the starting sector that is important, since increasing the size of the logical disk is associated with deleting the current logical disk and creating a larger volume on a new partition.
+
+__Before increasing the logical partition, it is necessary to fill in the number of its first sector at the current moment in time.__
+
+```bash
+fdisk /dev/<disk>
+
+d # delete partition that needs to be enlarged
+# then create a new section using the algorithm above
+# it is important that the enlarged partition starts from the same sector as the partition before it was enlarged and deleted
+```
+
+The partition size has been increased, but the file system has not actually increased the partition, since the OS operates with the file system size in blocks - this is reflected in the `/proc/partitions` file. This file cannot be changed even under _root_. Therefore, it is necessary to recalculate the partition table via `partprobe`. Then you can increase the FS itself via `resize2fs /dev/<disk>`.
+
+If you create another logical partition on the same disk, problems will arise with increasing the first partition, since the second one starts right after it and increasing the first partition will climb onto the beginning of the second one. In this case, you need to backup the second partition, delete it, increase the first partition, create the second partition of the required partition anew, mount the directories. That is, you can only increase the last logical partition painlessly.
+Usually, there is no reserve on the disk and when creating logical partitions, they are made larger than is actually required.
+
+### RAID storage
+Working with RAID storages without logical partitions on them:
+```bash
+# check the presence of disks (block devices) and their names
+lsblk
+
+# create a software RAID storage
+mdadm --create /dev/<raid_name> --level <level> --raid-devices <disk_count> /dev/<disk_1> /dev/<disk_2>
+# or
+mdadm --create /dev/<raid_name> -l <level> -n <disk_count> /dev/<disk_1> /dev/<disk_2>
+
+# example: creating RAID1 from 2 disks
+mdadm --create /dev/md123 -l 1 -n 2 /dev/sdb /dev/sdc
+```
+The disk space is ready. Next, you need to format it for the required file system and mount the directory.
+
+Increasing the RAID size:
+1. Prepare disks with increased capacity
+2. Remove one of the drives from the RAID storage
+```bash
+mdadm --manage /dev/<raid_name> --fail /dev/<old_disk_1> # mark the disk as bad
+mdadm --manage /dev/<raid_name> --remove /dev/<old_disk_1> # remove the disk from the RAID storage
+mdadm --manage /dev/<raid_name> --add /dev/<new_disk_1> # add a new disk with a larger capacity; the disk is prepared and the data on it is synchronized with other disks
+```
+3. Repeat steps 1-2 for the second disk in the storage
+4. Increase the maximum size of disks in the storage (that is, we update/increase the size of the RAID storage)
+```bash
+mdadm --grow /dev/<raid_name> --size=max
+```
+5. Update the file system size to the new RAID storage size using `resize2fs /dev/<raid_name>`
+
+When working with RAID storage with logical partitions, the procedure is similar, but initially you need to change the logical partitions, and then make changes to the storage media themselves.
+In general, this creates additional problems, so for disks that are used only for data storage, it is best not to use logical partitions at all. That is, use the entire disk or RAID storage to store data.
+
+### LVM
+Up to this point, the example concerned the ligaments
+- block device (RAID storage) - file system
+- block device (RAID storage) - logical partition - file system
+
+Now let's add a layer in the form of LVM. It consists of __physical volume__, __volume group__ and __logical volume__.
+
+Read tutorials:
+- [List of commands for working with LVM](https://hostadmina.ru/zametki/linux/lvm/spisok-komand-dlya-rabotyi-s-lvm.html)
+- [How to work with LVM](https://www.dmosk.ru/instruktions.php?object=lvm)
+
+```bash
+pvcrate /dev/<disk>
+vgcreate <volume_group_name> /dev/<disk>
+lvcreate <volume_group_name> -n <logical_volume_name> -l <logical_volume_size>
+```
+Next, you need to format it for the required file system via `mkfs.ext4 /dev/mapper/<volume_group_name>-<logical_volume_name>` and mount the directory.
+
+After this, you can expand any logical volume without taking into account its placement, order, etc.
+```bash
+# expand logical volume and immediately increase the size of the file system (flag -r)
+lvextend /dev/mapper/<volume_group_name>-<logical_volume_name> -L +<size> -r
+# or
+lvextend /dev/mapper/<volume_group_name>-<logical_volume_name> -l +<percentage>%FREE -r
+```
+
+Show real allocation of LVM partitions on media:
+```bash
+pvs -a -o +lv_name -o +seg_size -o +seg_size_pe -o +seg_pe_ranges
+```
+
+Transferring a logical volume from one disk to a RAID storage:
+1. Created RAID storage with status ___Degraded___
+```bash
+mdadm --create /dev/<raid_name> --level <level> --raid-devices <disk_count> /dev/<new_disk> missing
+```
+2. Add a RAID storage to volume group
+```bash
+vgextend <volume_group_name> /dev/<raid_name>
+```
+3. Move an existing disk from volume group to RAID storage
+```bash
+pvmove /dev/<existing_lvm_disk>
+vgreduce <volume_group_name> /dev/<existing_lvm_disk>
+pvremove /dev/<existing_lvm_disk>
+mdadm --manage /dev/<raid_name> -add /dev/<existing_lvm_disk>
+
+# проверить результат
+mdadm -D /dev/<raid_name>
+```
+
+
 ## Certificates
 Install `openssl`:
-```
+```bash
 sudo apt-get update
 sudo apt-get install openssl
 ```
@@ -234,17 +396,17 @@ Extract _.crt_ and _.key_ files from _.pfx_ file:
 1. Start OpenSSL from the _OpenSSL\bin_ folder
 2. Open the command prompt and go to the folder that contains your _.pfx_ file
 3. Run the following command to extract the private key:
-```
+```bash
 openssl pkcs12 -in <yourfile.pfx> -nocerts -out <drlive.key>
 ```
 You will be prompted to type the import password. Type the password that you used to protect your keypair when you created the .pfx file. You will be prompted again to provide a new password to protect the .key file that you are creating. Store the password to your key file in a secure place to avoid misuse.
 
 4. Run the following command to extract the certificate:
-```
+```bash
 openssl pkcs12 -in <yourfile.pfx> -clcerts -nokeys -out <drlive.crt>
 ```
 5. Run the following command to decrypt the private key:
-```
+```bash
 openssl rsa -in <drlive.key> -out <drlive-decrypted.key>
 ```
 Type the password that you created to protect the private key file in the previous step.
@@ -252,7 +414,7 @@ The _.crt_ file and the decrypted and encrypted _.key_ files are available in th
 
 ### Convert _.pfx_ file to .pem format
 There might be instances where you might have to convert the _.pfx_ file into _.pem_ format. Run the following command to convert it into PEM format.
-```
+```bash
 openssl rsa -in <keyfile-encrypted.key> -outform PEM -out <keyfile-encrypted-pem.key>
 ```
 
@@ -328,13 +490,13 @@ journalctl -xeu <service_name>
 
 ## VMWare tools
 ### Install VMWare tools
-```
+```bash
 sudo apt update
 sudo apt install open-vm-tools open-vm-tools-desktop
 ```
 ### Enable shared folder
 Enable shared folder in settings of VM and then:
-```
+```bash
 sudo mkdir -p /mnt/hgfs
 sudo mount -t fuse.vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other
 ```
@@ -414,7 +576,7 @@ docker run -d -it -p 8000:8000 --name focalboard --restart=always mattermost/foc
 ```
 
 ### Image offline migration
-```
+```bash
 docker save -o <path for generated tar file> <image name>
 docker load -i <path to image tar file>
 ```
